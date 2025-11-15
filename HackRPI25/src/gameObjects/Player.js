@@ -6,7 +6,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     drag = 1000;
     fireRate = 10;
     fireCounter = 0;
-    health = 1;
+    health = 3;
 
     constructor(scene, x, y, shipId) {
         super(scene, x, y, ASSETS.spritesheet.TerryWalking.key, shipId);
@@ -15,7 +15,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.setScale(1.5);
-        this.setSize(this.displayWidth, this.displayHeight); // update physics hitbox to match
+        // this.setSize(this.displayWidth, this.displayHeight); // update physics hitbox to match
         this.body.setOffset((this.width - this.body.width) * 0.5, (this.height - this.body.height) * 0.5);
         this.setCollideWorldBounds(true); // prevent ship from leaving the screen
         this.setDepth(100); // make ship appear on top of other game objects
@@ -112,6 +112,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     hit(damage) {
         this.health -= damage;
+
+        // notify UI of health change
+        if (this.scene && this.scene.events) this.scene.events.emit('healthUpdated', this.health);
 
         if (this.health <= 0) this.die();
     }

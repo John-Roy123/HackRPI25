@@ -28,6 +28,8 @@ export class Game extends Phaser.Scene {
         this.initInput();
         this.initPhysics();
         this.initMap();
+        // launch UI scene on top of Game
+        this.scene.launch('UI');
     }
 
     update() {
@@ -50,7 +52,7 @@ export class Game extends Phaser.Scene {
     initVariables() {
         this.coins = 0;
         this.merchantOpened = false;
-        this.merchantThreshold = 100; // configurable threshold for opening merchant
+        this.merchantThreshold = 1000; // configurable threshold for opening merchant
         this.centreX = this.scale.width * 0.5;
         this.centreY = this.scale.height * 0.5;
 
@@ -94,15 +96,8 @@ export class Game extends Phaser.Scene {
             .setOrigin(0.5)
             .setDepth(100);
 
-        // Create coins text
-        this.coinsText = this.add.text(20, 20, 'coins: 0', {
-            fontFamily: 'Arial Black', fontSize: 28, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-        })
-            .setDepth(100);
-
         // Create game over text
-        this.gameOverText = this.add.text(this.scale.width * 0.5, this.scale.height * 0.5, 'Game Over', {
+        this.gameOverText = this.add.text(this.scale.width * 0.5, this.scale.height * 0.5, 'Cooked', {
             fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
             stroke: '#000000', strokeThickness: 8,
             align: 'center'
@@ -226,6 +221,10 @@ export class Game extends Phaser.Scene {
             this.scrollMovement -= this.tileSize; // reset to 0
         }
 
+        if (this.player.health <= 0) {
+            this.GameOver('lose');
+        }
+
         this.groundLayer.y = this.mapTop + this.scrollMovement; // move one tile up
     }
 
@@ -261,8 +260,9 @@ export class Game extends Phaser.Scene {
         this.playerBulletGroup.remove(bullet, true, true);
     }
 
-    fireEnemyBullet(x, y, power) {
-        const bullet = new EnemyBullet(this, x, y, power);
+    // fireEnemyBullet: optional targetX, targetY for directional bullets
+    fireEnemyBullet(x, y, power, targetX, targetY) {
+        const bullet = new EnemyBullet(this, x, y, power, targetX, targetY);
         this.enemyBulletGroup.add(bullet);
     }
 
@@ -308,8 +308,6 @@ export class Game extends Phaser.Scene {
         this.addExplosion(player.x, player.y);
         player.hit(obstacle.getPower());
         obstacle.die();
-
-        this.GameOver('lose');
     }
 
 hitEnemy(bullet, enemy) {
@@ -332,7 +330,8 @@ hitEnemy(bullet, enemy) {
 
     updatecoins(points) {
     this.coins += points;
-    this.coinsText.setText(`coins: ${this.coins}`);
+    // emit event so UI scene can update
+    this.events.emit('coinsUpdated', this.coins);
     // debugging log: track coin changes
     console.debug(`coins updated -> ${this.coins}`);
 }

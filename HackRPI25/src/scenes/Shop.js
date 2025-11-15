@@ -45,6 +45,8 @@ export class Shop extends Phaser.Scene {
                     if (item.id === 'health') {
                         if (gameScene.player && typeof gameScene.player.hit === 'function') {
                             gameScene.player.health = (gameScene.player.health || 1) + 1;
+                            // notify UI of health change
+                            gameScene.events.emit('healthUpdated', gameScene.player.health);
                         }
                     } else if (item.id === 'speed') {
                         if (gameScene.player) {

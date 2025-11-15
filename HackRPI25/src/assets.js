@@ -1,4 +1,10 @@
 export default {
+    'image': {
+        HealthIcon: {
+            key: 'HealthIcon',
+            args: ['assets/HealthIcon.png']
+        }
+    },
     // 'audio': {
     //     score: {
     //         key: 'sound',

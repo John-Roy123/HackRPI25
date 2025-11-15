@@ -2,6 +2,7 @@ import { Boot } from './scenes/Boot.js';
 import { Preloader } from './scenes/Preloader.js';
 import { Start } from './scenes/Start.js';
 import { Game } from './scenes/Game.js';
+import { UI } from './scenes/UI.js';
 import { Shop } from './scenes/Shop.js';
 import { GameOver } from './scenes/GameOver.js';
 
@@ -26,6 +27,7 @@ const config = {
         Preloader,
         Start,
         Game,
+        UI,
         Shop,
         GameOver,
         
