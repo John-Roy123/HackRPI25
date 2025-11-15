@@ -24,18 +24,42 @@ export class Shop extends Phaser.Scene {
         this.add.text(panelX, panelY - panelH / 2 + 40, 'Shop', { fontFamily: 'Arial Black', fontSize: 48, color: '#ffffff' }).setOrigin(0.5).setDepth(202);
 
         // coins display
-        this.coinsText = this.add.text(panelX - panelW / 2 + 40, panelY - panelH / 2 + 100, `Coins: ${gameScene.coins}`, { fontFamily: 'Arial', fontSize: 28, color: '#ffff00' }).setDepth(202);
+        this.coinsText = this.add.text(panelX - panelW / 2 + 40, panelY - panelH / 2 + 40, `Coins: ${gameScene.coins}`, { fontFamily: 'Arial', fontSize: 28, color: '#ffff00' }).setDepth(202);
+
+        // split panel: left column = WiseTurkey (info), right column = shop items
+        const leftW = Math.floor(panelW * 0.38);
+        const leftX = panelX - panelW / 2 + leftW / 2 + 10;
+        const rightStartX = panelX - panelW / 2 + leftW + 30;
+
+        // WiseTurkey: interactive sprite that sells information
+        const turkeyX = panelX - panelW / 2 + Math.floor(leftW / 2) + 20;
+        const turkeyY = panelY - 20;
+        this.wiseCost = 15; // cost to buy a piece of information
+        this.wise = this.add.image(turkeyX, turkeyY, ASSETS.image.WiseTurkey.key).setDepth(202).setScale(2.0).setInteractive({ useHandCursor: true });
+        this.wise.setScale(0.9);
+        this.wise.on('pointerdown', () => {
+            if (gameScene.coins >= this.wiseCost) {
+                gameScene.updatecoins(-this.wiseCost);
+                this.coinsText.setText(`Coins: ${gameScene.coins}`);
+                this.showInfo();
+            } else {
+                this.showFeedback('Too poor for wisdom');
+            }
+        });
+
+        // info text area under wise turkey
+        this.infoText = this.add.text(turkeyX - leftW / 2 + 12, turkeyY + 80, '', { fontFamily: 'Arial', fontSize: 18, color: '#ffffff', wordWrap: { width: leftW - 24 } }).setDepth(202);
 
         const items = [
-            { id: 'health', label: 'Health +1', cost: 20 },
+            { id: 'health', label: 'Health +1', cost: 75 },
             { id: 'speed', label: 'Max Speed +100', cost: 50 },
-            { id: 'knives', label: 'Knives (weapon)', cost: 80 }
+            { id: 'knives', label: 'Knives (weapon)', cost: 200 }
         ];
 
         const startY = panelY - panelH / 2 + 150;
         items.forEach((item, idx) => {
             const y = startY + idx * 70;
-            const label = this.add.text(panelX - panelW / 2 + 60, y, `${item.label}`, { fontFamily: 'Arial', fontSize: 26, color: '#ffffff' }).setDepth(202);
+            const label = this.add.text(rightStartX + 20, y, `${item.label}`, { fontFamily: 'Arial', fontSize: 26, color: '#ffffff' }).setDepth(202);
             const cost = this.add.text(panelX + panelW / 2 - 120, y, `${item.cost}c`, { fontFamily: 'Arial', fontSize: 26, color: '#ffffff' }).setDepth(202);
 
             const buy = this.add.text(panelX + panelW / 2 - 40, y, 'Buy', { fontFamily: 'Arial Black', fontSize: 26, color: '#00ff00' }).setOrigin(0.5).setDepth(202).setInteractive({ useHandCursor: true });
@@ -85,6 +109,18 @@ export class Shop extends Phaser.Scene {
 
         // small feedback text
         this.feedback = this.add.text(panelX, panelY + panelH / 2 - 120, '', { fontFamily: 'Arial', fontSize: 20, color: '#ffffff' }).setOrigin(0.5).setDepth(202);
+    }
+
+    showInfo() {
+        const infoLines = [
+            'Tip: Enemies aim where you stand — keep moving!',
+            'Tip: Shooting while strafing conserves position.',
+            'Tip: Knives do more damage at close range.',
+            'Tip: Merchant prices may change with levels.'
+        ];
+        const idx = Phaser.Math.RND.between(0, infoLines.length - 1);
+        this.infoText.setText(infoLines[idx]);
+        this.time.addEvent({ delay: 5000, callback: () => this.infoText.setText('') });
     }
 
     showFeedback(message) {

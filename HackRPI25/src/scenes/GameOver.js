@@ -33,13 +33,13 @@ export class GameOver extends Phaser.Scene {
             // lose screen -- add background to obscure game
             this.background1 = this.add.image(0, 0, 'background').setOrigin(0);
 
-            this.add.text(this.scale.width * 0.5, this.scale.height * 0.45, 'Game Over', {
+            this.add.text(this.scale.width * 0.5, this.scale.height * 0.45, 'Cooked', {
                 fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
                 stroke: '#000000', strokeThickness: 8,
                 align: 'center'
             }).setOrigin(0.5);
 
-            this.add.text(this.scale.width * 0.5, this.scale.height * 0.62, 'Press SPACE to restart level', {
+            this.add.text(this.scale.width * 0.5, this.scale.height * 0.62, 'Press SPACE to try again', {
                 fontFamily: 'Arial', fontSize: 28, color: '#ffffff'
             }).setOrigin(0.5);
 

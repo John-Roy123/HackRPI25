@@ -4,6 +4,11 @@ export default {
             key: 'HealthIcon',
             args: ['assets/HealthIcon.png']
         }
+        ,
+        WiseTurkey: {
+            key: 'WiseTurkey',
+            args: ['assets/WiseTurkey.png']
+        }
     },
     // 'audio': {
     //     score: {
