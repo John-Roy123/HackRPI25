@@ -25,7 +25,8 @@ const config = {
         Preloader,
         Start,
         Game,
-        GameOver
+        GameOver,
+        
     ],
     scale: {
         mode: Phaser.Scale.FIT,

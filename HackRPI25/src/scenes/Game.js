@@ -15,6 +15,11 @@ export class Game extends Phaser.Scene {
         super('Game');
     }
 
+    init(data) {
+        // capture requested restart level when the scene is started with data
+        this.requestedRestartLevel = (data && data.restartLevel !== undefined) ? data.restartLevel : null;
+    }
+
     create() {
         this.initVariables();
         this.initGameUi();
@@ -26,17 +31,26 @@ export class Game extends Phaser.Scene {
     }
 
     update() {
-        this.updateMap();
+    this.updateMap();
 
-        if (!this.gameStarted) return;
+    if (!this.gameStarted) return;
 
-        this.player.update();
-        if (this.spawnEnemyCounter > 0) this.spawnEnemyCounter--;
-        else this.addFlyingGroup();
+    this.player.update();
+
+    // only spawn enemies while under the coin threshold
+    if (this.coins < this.merchantThreshold) {
+        if (this.spawnEnemyCounter > 0) {
+            this.spawnEnemyCounter--;
+        } else {
+            this.addFlyingGroup();
+        }
     }
+}
 
     initVariables() {
-        this.score = 0;
+        this.coins = 0;
+        this.merchantOpened = false;
+        this.merchantThreshold = 100; // configurable threshold for opening merchant
         this.centreX = this.scale.width * 0.5;
         this.centreY = this.scale.height * 0.5;
 
@@ -55,6 +69,15 @@ export class Game extends Phaser.Scene {
 
         this.map; // rference to tile map
         this.groundLayer; // reference to ground layer of tile map
+
+        this.levels = [
+            { enemyCount: 6, spawnInterval: 400, minPower: 1, maxPower: 2, minSpeed: 0.0001, maxSpeed: 0.0005 },
+            { enemyCount: 10, spawnInterval: 320, minPower: 1, maxPower: 3, minSpeed: 0.00015, maxSpeed: 0.0008 },
+            // add more levels...
+        ];
+        this.currentLevel = -1;
+        this.remainingToSpawn = 0;
+        this.remainingAlive = 0;
     }
 
     initGameUi() {
@@ -67,8 +90,8 @@ export class Game extends Phaser.Scene {
             .setOrigin(0.5)
             .setDepth(100);
 
-        // Create score text
-        this.scoreText = this.add.text(20, 20, 'Score: 0', {
+        // Create coins text
+        this.coinsText = this.add.text(20, 20, 'coins: 0', {
             fontFamily: 'Arial Black', fontSize: 28, color: '#ffffff',
             stroke: '#000000', strokeThickness: 8,
         })
@@ -190,7 +213,13 @@ export class Game extends Phaser.Scene {
     startGame() {
         this.gameStarted = true;
         this.tutorialText.setVisible(false);
-        this.addFlyingGroup();
+        // start requested restart level if provided, otherwise start level 0
+        if (this.requestedRestartLevel !== null) {
+            this.startLevel(this.requestedRestartLevel);
+            this.requestedRestartLevel = null; // clear after use
+        } else {
+            this.startLevel(0);
+        }
     }
 
     fireBullet(x, y) {
@@ -215,7 +244,7 @@ export class Game extends Phaser.Scene {
     }
 
     removeEnemyBullet(bullet) {
-        this.playerBulletGroup.remove(bullet, true, true);
+        this.enemyBulletGroup.remove(bullet, true, true);
     }
 
     // add a group of flying enemies
@@ -257,22 +286,79 @@ export class Game extends Phaser.Scene {
         player.hit(obstacle.getPower());
         obstacle.die();
 
-        this.GameOver();
+        this.GameOver('lose');
     }
 
-    hitEnemy(bullet, enemy) {
-        this.updateScore(10);
-        bullet.remove();
-        enemy.hit(bullet.getPower());
+hitEnemy(bullet, enemy) {
+    this.updatecoins(10);
+    bullet.remove();
+    enemy.hit(bullet.getPower());   // let the enemy explode/die first
+
+    // AFTER all that, check for the coin threshold once
+    if (!this.merchantOpened && this.coins >= this.merchantThreshold) {
+        console.info(`Merchant opening: coins=${this.coins} (threshold=${this.merchantThreshold})`);
+        
+    }
+}
+
+    updatecoins(points) {
+    this.coins += points;
+    this.coinsText.setText(`coins: ${this.coins}`);
+    // debugging log: track coin changes
+    console.debug(`coins updated -> ${this.coins}`);
+}
+
+
+
+    GameOver(reason = 'lose') {
+        // navigate to the GameOver scene and pass current level + reason so it can show the proper ending
+        const levelToRestart = (typeof this.currentLevel === 'number' && this.currentLevel >= 0) ? this.currentLevel : 0;
+            // for losing, switch to the GameOver scene (full-screen)
+            this.scene.start('GameOver', { level: levelToRestart, reason: reason });
+        
+    }
+    // startLevel is a method that begins a fixed-enemy level
+    startLevel(levelIndex) {
+        const level = this.levels[levelIndex];
+        if (!level) {
+            // no more levels -> player has completed all levels
+            this.GameOver('win');
+            return;
+        }
+
+        this.currentLevel = levelIndex;
+        this.remainingToSpawn = level.enemyCount;
+        this.remainingAlive = level.enemyCount;
+
+        // schedule spawns: repeat = enemyCount - 1 because first spawn occurs immediately below
+        this.timedEvent = this.time.addEvent({
+            delay: level.spawnInterval,
+            callback: () => {
+                // pick random attributes (you can alter this to be deterministic)
+                const randomId = Phaser.Math.RND.between(0, 11);
+                const randomPath = Phaser.Math.RND.between(0, 3);
+                const randomPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
+                const randomSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
+
+                if(this.coins < this.merchantThreshold){
+                this.addEnemy(randomId, randomPath, randomSpeed, randomPower);
+                this.remainingToSpawn--;
+                if (this.remainingToSpawn <= 0) {
+                    // all scheduled; stop the timed event
+                    if (this.timedEvent) this.timedEvent.remove(false);
+                }}
+            },
+            callbackScope: this,
+            repeat: level.enemyCount - 1
+        });
+
+        // spawn one immediately for nicer pacing:
+        const rId = Phaser.Math.RND.between(0, 11);
+        const rPath = Phaser.Math.RND.between(0, 3);
+        const rPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
+        const rSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
+        this.addEnemy(rId, rPath, rSpeed, rPower);
+        this.remainingToSpawn--;
     }
 
-    updateScore(points) {
-        this.score += points;
-        this.scoreText.setText(`Score: ${this.score}`);
-    }
-
-    GameOver() {
-        this.gameStarted = false;
-        this.gameOverText.setVisible(true);
-    }
 }
