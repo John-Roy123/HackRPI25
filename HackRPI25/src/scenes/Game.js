@@ -55,6 +55,15 @@ export class Game extends Phaser.Scene {
 
         this.map; // rference to tile map
         this.groundLayer; // reference to ground layer of tile map
+
+        this.levels = [
+            { enemyCount: 6, spawnInterval: 400, minPower: 1, maxPower: 2, minSpeed: 0.0001, maxSpeed: 0.0005 },
+            { enemyCount: 10, spawnInterval: 320, minPower: 1, maxPower: 3, minSpeed: 0.00015, maxSpeed: 0.0008 },
+            // add more levels...
+        ];
+        this.currentLevel = -1;
+        this.remainingToSpawn = 0;
+        this.remainingAlive = 0;
     }
 
     initGameUi() {
