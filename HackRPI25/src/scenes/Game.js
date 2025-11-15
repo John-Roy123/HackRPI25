@@ -105,7 +105,8 @@ export class Game extends Phaser.Scene {
     }
 
     initPlayer() {
-        this.player = new Player(this, this.centreX, this.scale.height - 100, 8);
+        // place player near centre so they can run around
+        this.player = new Player(this, this.centreX, this.centreY, 8);
     }
 
     initInput() {
@@ -113,6 +114,10 @@ export class Game extends Phaser.Scene {
 
         // check for spacebar press only once
         this.cursors.space.once('down', (key, event) => {
+            this.startGame();
+        });
+        // also start game when player first taps/clicks
+        this.input.once('pointerdown', (pointer) => {
             this.startGame();
         });
     }
@@ -137,6 +142,17 @@ export class Game extends Phaser.Scene {
         this.map = this.make.tilemap({ data: mapData, tileWidth: this.tileSize, tileHeight: this.tileSize });
         const tileset = this.map.addTilesetImage(ASSETS.spritesheet.tiles.key);
         this.groundLayer = this.map.createLayer(0, tileset, 0, this.mapTop);
+
+        // set physics world and camera bounds to map size so camera can follow player
+        const worldWidth = this.mapWidth * this.tileSize;
+        const worldHeight = this.mapHeight * this.tileSize;
+        this.physics.world.setBounds(0, this.mapTop, worldWidth, worldHeight);
+        this.cameras.main.setBounds(0, this.mapTop, worldWidth, worldHeight);
+
+        // if player already exists, start following
+        if (this.player) {
+            this.cameras.main.startFollow(this.player);
+        }
     }
 
     // scroll the tile map
@@ -178,7 +194,14 @@ export class Game extends Phaser.Scene {
     }
 
     fireBullet(x, y) {
-        const bullet = new PlayerBullet(this, x, y);
+        // legacy single-arg fire kept for compatibility (fires upward)
+        const bullet = new PlayerBullet(this, x, y, 1, x, y - 100);
+        this.playerBulletGroup.add(bullet);
+    }
+
+    // new directional fire API
+    fireBullet(x, y, targetX, targetY, power = 1) {
+        const bullet = new PlayerBullet(this, x, y, power, targetX, targetY);
         this.playerBulletGroup.add(bullet);
     }
 

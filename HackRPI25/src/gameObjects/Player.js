@@ -36,6 +36,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         const upKey = cursors.up.isDown;
         const downKey = cursors.down.isDown;
         const spaceKey = cursors.space.isDown;
+        const pointerDown = this.scene.input.activePointer.isDown;
 
         const moveDirection = { x: 0, y: 0 }; // default move direction
 
@@ -43,7 +44,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         if (rightKey) moveDirection.x++;
         if (upKey) moveDirection.y--;
         if (downKey) moveDirection.y++;
-        if (spaceKey) this.fire();
+        if (spaceKey || pointerDown) this.fire();
 
         this.body.velocity.x += moveDirection.x * this.velocityIncrement; // increase horizontal velocity
         this.body.velocity.y += moveDirection.y * this.velocityIncrement; // increase vertical velocity
@@ -54,7 +55,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.fireCounter = this.fireRate;
 
-        this.scene.fireBullet(this.x, this.y);
+        // fire towards pointer (mouse / touch). If no pointer available, fire upwards
+        const pointer = this.scene.input.activePointer;
+        const targetX = pointer ? pointer.worldX : this.x;
+        const targetY = pointer ? pointer.worldY : this.y - 100;
+
+        this.scene.fireBullet(this.x, this.y, targetX, targetY);
     }
 
     hit(damage) {
