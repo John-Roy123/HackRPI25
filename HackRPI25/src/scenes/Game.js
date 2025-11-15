@@ -63,7 +63,7 @@ export class Game extends Phaser.Scene {
         this.mapTop = -this.mapOffset * this.tileSize; // offset (in pixels) to move the map above the top of the screen
         this.mapHeight = Math.ceil(this.scale.height / this.tileSize) + this.mapOffset + 1; // height of the tile map (in tiles)
         this.mapWidth = Math.ceil(this.scale.width / this.tileSize); // width of the tile map (in tiles)
-        this.scrollSpeed = 1; // background scrolling speed (in pixels)
+        this.scrollSpeed = 0; // background scrolling speed (in pixels)
         this.scrollMovement = 0; // current scroll amount
         this.spawnEnemyCounter = 0; // timer before spawning next group of enemies
 
@@ -115,6 +115,14 @@ export class Game extends Phaser.Scene {
             frameRate: ANIMATION.explosion.frameRate,
             repeat: ANIMATION.explosion.repeat
         });
+
+        this.anims.create({
+            key: 'walk',
+            frames: this.anims.generateFrameNumbers('TerryWalking', { start: 0, end: 3}),
+            frameRate: 12,
+            repeat: -1
+        });
+        
     }
 
     initPhysics() {

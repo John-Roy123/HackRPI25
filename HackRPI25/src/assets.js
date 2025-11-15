@@ -26,5 +26,12 @@ export default {
                 frameHeight: 32
             }]
         },
+        TerryWalking: {
+            key: 'TerryWalking',
+            args: ['assets/TerryWalking.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        }
     }
 };

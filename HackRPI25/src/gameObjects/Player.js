@@ -1,15 +1,15 @@
 import ASSETS from '../assets.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-    velocityIncrement = 50;
-    velocityMax = 500;
+    velocityIncrement = 25;
+    velocityMax = 250;
     drag = 1000;
     fireRate = 10;
     fireCounter = 0;
     health = 1;
 
     constructor(scene, x, y, shipId) {
-        super(scene, x, y, ASSETS.spritesheet.ships.key, shipId);
+        super(scene, x, y, ASSETS.spritesheet.TerryWalking.key, shipId);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -48,6 +48,21 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.body.velocity.x += moveDirection.x * this.velocityIncrement; // increase horizontal velocity
         this.body.velocity.y += moveDirection.y * this.velocityIncrement; // increase vertical velocity
+
+        // play walking animation when moving, stop when idle
+        const isMoving = (moveDirection.x !== 0) || (moveDirection.y !== 0);
+        if (isMoving) {
+            if (!this.anims.isPlaying || this.anims.currentAnim.key !== 'walk') {
+                this.play('walk');
+            }
+            // flip sprite horizontally when moving left/right for nicer feedback
+            if (moveDirection.x < 0) this.setFlipX(true);
+            else if (moveDirection.x > 0) this.setFlipX(false);
+        } else {
+            if (this.anims.isPlaying) this.stop();
+            // set to first frame (idle) when not moving
+            this.setFrame(0);
+        }
     }
 
     fire() {
