@@ -32,6 +32,28 @@ export default {
                 frameWidth: 64,
                 frameHeight: 64,
             }]
+        },
+        TerryKnives: {
+            key: 'TerryKnives',
+            args: ['assets/TerryKnives.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        FeatherProjectile: {
+            key: 'FeatherProjectile',
+            args: ['assets/FeatherProjectile.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        }
+        ,
+        KnifeProjectile: {
+            key: 'KnifeProjectile',
+            args: ['assets/KnifeProjectile.png', {
+                frameWidth: 32,
+                frameHeight: 32,
+            }]
         }
     }
 };

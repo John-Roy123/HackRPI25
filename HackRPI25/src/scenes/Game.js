@@ -78,6 +78,10 @@ export class Game extends Phaser.Scene {
         this.currentLevel = -1;
         this.remainingToSpawn = 0;
         this.remainingAlive = 0;
+
+        // shop / kill tracking
+        this.enemiesKilled = 0; // total enemies killed since level start
+        this.nextShopThreshold = 20; // first shop opens after this many kills; increases each time
     }
 
     initGameUi() {
@@ -119,6 +123,13 @@ export class Game extends Phaser.Scene {
         this.anims.create({
             key: 'walk',
             frames: this.anims.generateFrameNumbers('TerryWalking', { start: 0, end: 3}),
+            frameRate: 12,
+            repeat: -1
+        });
+        // walking animation for the knives player sprite
+        this.anims.create({
+            key: 'walk_knives',
+            frames: this.anims.generateFrameNumbers('TerryKnives', { start: 0, end: 3}),
             frameRate: 12,
             repeat: -1
         });
@@ -230,15 +241,19 @@ export class Game extends Phaser.Scene {
         }
     }
 
-    fireBullet(x, y) {
-        // legacy single-arg fire kept for compatibility (fires upward)
-        const bullet = new PlayerBullet(this, x, y, 1, x, y - 100);
-        this.playerBulletGroup.add(bullet);
-    }
-
-    // new directional fire API
+    // unified fire API - supports legacy single-arg and directional fire
     fireBullet(x, y, targetX, targetY, power = 1) {
-        const bullet = new PlayerBullet(this, x, y, power, targetX, targetY);
+        // determine weapon info from player if available
+        const weapon = (this.player && this.player.currentWeapon) ? this.player.currentWeapon : { bulletKey: ASSETS.spritesheet.FeatherProjectile.key, power: 1 };
+
+        if (typeof targetX !== 'number' || typeof targetY !== 'number') {
+            // legacy: fire upwards
+            const bullet = new PlayerBullet(this, x, y, weapon.power || power, x, y - 100, weapon.bulletKey);
+            this.playerBulletGroup.add(bullet);
+            return;
+        }
+
+        const bullet = new PlayerBullet(this, x, y, weapon.power || power, targetX, targetY, weapon.bulletKey);
         this.playerBulletGroup.add(bullet);
     }
 
@@ -301,6 +316,12 @@ hitEnemy(bullet, enemy) {
     this.updatecoins(10);
     bullet.remove();
     enemy.hit(bullet.getPower());   // let the enemy explode/die first
+
+    // track kills and open shop when cumulative threshold reached
+    this.enemiesKilled++;
+    if (this.enemiesKilled >= this.nextShopThreshold) {
+        this.openShop();
+    }
 
     // AFTER all that, check for the coin threshold once
     if (!this.merchantOpened && this.coins >= this.merchantThreshold) {
@@ -367,6 +388,14 @@ hitEnemy(bullet, enemy) {
         const rSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
         this.addEnemy(rId, rPath, rSpeed, rPower);
         this.remainingToSpawn--;
+    }
+
+    openShop() {
+        // Pause the game scene and launch the shop overlay
+        this.scene.pause(); // pause this Game scene
+        this.scene.launch('Shop'); // launch shop as an overlay scene
+        // increase the next threshold (20 -> 40 -> 60 ...)
+        this.nextShopThreshold += 20;
     }
 
 }
