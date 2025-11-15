@@ -15,6 +15,11 @@ export class Game extends Phaser.Scene {
         super('Game');
     }
 
+    init(data) {
+        // capture requested restart level when the scene is started with data
+        this.requestedRestartLevel = (data && data.restartLevel !== undefined) ? data.restartLevel : null;
+    }
+
     create() {
         this.initVariables();
         this.initGameUi();
@@ -23,20 +28,31 @@ export class Game extends Phaser.Scene {
         this.initInput();
         this.initPhysics();
         this.initMap();
+        // launch UI scene on top of Game
+        this.scene.launch('UI');
     }
 
     update() {
-        this.updateMap();
+    this.updateMap();
 
-        if (!this.gameStarted) return;
+    if (!this.gameStarted) return;
 
-        this.player.update();
-        if (this.spawnEnemyCounter > 0) this.spawnEnemyCounter--;
-        else this.addFlyingGroup();
+    this.player.update();
+
+    // only spawn enemies while under the coin threshold
+    if (this.coins < this.merchantThreshold) {
+        if (this.spawnEnemyCounter > 0) {
+            this.spawnEnemyCounter--;
+        } else {
+            this.addFlyingGroup();
+        }
     }
+}
 
     initVariables() {
-        this.score = 0;
+        this.coins = 0;
+        this.merchantOpened = false;
+        this.merchantThreshold = 1000; // configurable threshold for opening merchant
         this.centreX = this.scale.width * 0.5;
         this.centreY = this.scale.height * 0.5;
 
@@ -49,7 +65,7 @@ export class Game extends Phaser.Scene {
         this.mapTop = -this.mapOffset * this.tileSize; // offset (in pixels) to move the map above the top of the screen
         this.mapHeight = Math.ceil(this.scale.height / this.tileSize) + this.mapOffset + 1; // height of the tile map (in tiles)
         this.mapWidth = Math.ceil(this.scale.width / this.tileSize); // width of the tile map (in tiles)
-        this.scrollSpeed = 1; // background scrolling speed (in pixels)
+        this.scrollSpeed = 0; // background scrolling speed (in pixels)
         this.scrollMovement = 0; // current scroll amount
         this.spawnEnemyCounter = 0; // timer before spawning next group of enemies
 
@@ -64,6 +80,10 @@ export class Game extends Phaser.Scene {
         this.currentLevel = -1;
         this.remainingToSpawn = 0;
         this.remainingAlive = 0;
+
+        // shop / kill tracking
+        this.enemiesKilled = 0; // total enemies killed since level start
+        this.nextShopThreshold = 20; // first shop opens after this many kills; increases each time
     }
 
     initGameUi() {
@@ -76,15 +96,8 @@ export class Game extends Phaser.Scene {
             .setOrigin(0.5)
             .setDepth(100);
 
-        // Create score text
-        this.scoreText = this.add.text(20, 20, 'Score: 0', {
-            fontFamily: 'Arial Black', fontSize: 28, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-        })
-            .setDepth(100);
-
         // Create game over text
-        this.gameOverText = this.add.text(this.scale.width * 0.5, this.scale.height * 0.5, 'Game Over', {
+        this.gameOverText = this.add.text(this.scale.width * 0.5, this.scale.height * 0.5, 'Cooked', {
             fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
             stroke: '#000000', strokeThickness: 8,
             align: 'center'
@@ -101,6 +114,21 @@ export class Game extends Phaser.Scene {
             frameRate: ANIMATION.explosion.frameRate,
             repeat: ANIMATION.explosion.repeat
         });
+
+        this.anims.create({
+            key: 'walk',
+            frames: this.anims.generateFrameNumbers('TerryWalking', { start: 0, end: 3}),
+            frameRate: 12,
+            repeat: -1
+        });
+        // walking animation for the knives player sprite
+        this.anims.create({
+            key: 'walk_knives',
+            frames: this.anims.generateFrameNumbers('TerryKnives', { start: 0, end: 3}),
+            frameRate: 12,
+            repeat: -1
+        });
+        
     }
 
     initPhysics() {
@@ -193,24 +221,38 @@ export class Game extends Phaser.Scene {
             this.scrollMovement -= this.tileSize; // reset to 0
         }
 
+        if (this.player.health <= 0) {
+            this.GameOver('lose');
+        }
+
         this.groundLayer.y = this.mapTop + this.scrollMovement; // move one tile up
     }
 
     startGame() {
         this.gameStarted = true;
         this.tutorialText.setVisible(false);
-        this.addFlyingGroup();
+        // start requested restart level if provided, otherwise start level 0
+        if (this.requestedRestartLevel !== null) {
+            this.startLevel(this.requestedRestartLevel);
+            this.requestedRestartLevel = null; // clear after use
+        } else {
+            this.startLevel(0);
+        }
     }
 
-    fireBullet(x, y) {
-        // legacy single-arg fire kept for compatibility (fires upward)
-        const bullet = new PlayerBullet(this, x, y, 1, x, y - 100);
-        this.playerBulletGroup.add(bullet);
-    }
-
-    // new directional fire API
+    // unified fire API - supports legacy single-arg and directional fire
     fireBullet(x, y, targetX, targetY, power = 1) {
-        const bullet = new PlayerBullet(this, x, y, power, targetX, targetY);
+        // determine weapon info from player if available
+        const weapon = (this.player && this.player.currentWeapon) ? this.player.currentWeapon : { bulletKey: ASSETS.spritesheet.FeatherProjectile.key, power: 1 };
+
+        if (typeof targetX !== 'number' || typeof targetY !== 'number') {
+            // legacy: fire upwards
+            const bullet = new PlayerBullet(this, x, y, weapon.power || power, x, y - 100, weapon.bulletKey);
+            this.playerBulletGroup.add(bullet);
+            return;
+        }
+
+        const bullet = new PlayerBullet(this, x, y, weapon.power || power, targetX, targetY, weapon.bulletKey);
         this.playerBulletGroup.add(bullet);
     }
 
@@ -218,13 +260,14 @@ export class Game extends Phaser.Scene {
         this.playerBulletGroup.remove(bullet, true, true);
     }
 
-    fireEnemyBullet(x, y, power) {
-        const bullet = new EnemyBullet(this, x, y, power);
+    // fireEnemyBullet: optional targetX, targetY for directional bullets
+    fireEnemyBullet(x, y, power, targetX, targetY) {
+        const bullet = new EnemyBullet(this, x, y, power, targetX, targetY);
         this.enemyBulletGroup.add(bullet);
     }
 
     removeEnemyBullet(bullet) {
-        this.playerBulletGroup.remove(bullet, true, true);
+        this.enemyBulletGroup.remove(bullet, true, true);
     }
 
     // add a group of flying enemies
@@ -265,23 +308,93 @@ export class Game extends Phaser.Scene {
         this.addExplosion(player.x, player.y);
         player.hit(obstacle.getPower());
         obstacle.die();
-
-        this.GameOver();
     }
 
-    hitEnemy(bullet, enemy) {
-        this.updateScore(10);
-        bullet.remove();
-        enemy.hit(bullet.getPower());
+hitEnemy(bullet, enemy) {
+    this.updatecoins(10);
+    bullet.remove();
+    enemy.hit(bullet.getPower());   // let the enemy explode/die first
+
+    // track kills and open shop when cumulative threshold reached
+    this.enemiesKilled++;
+    if (this.enemiesKilled >= this.nextShopThreshold) {
+        this.openShop();
     }
 
-    updateScore(points) {
-        this.score += points;
-        this.scoreText.setText(`Score: ${this.score}`);
+    // AFTER all that, check for the coin threshold once
+    if (!this.merchantOpened && this.coins >= this.merchantThreshold) {
+        console.info(`Merchant opening: coins=${this.coins} (threshold=${this.merchantThreshold})`);
+        
+    }
+}
+
+    updatecoins(points) {
+    this.coins += points;
+    // emit event so UI scene can update
+    this.events.emit('coinsUpdated', this.coins);
+    // debugging log: track coin changes
+    console.debug(`coins updated -> ${this.coins}`);
+}
+
+
+
+    GameOver(reason = 'lose') {
+        // navigate to the GameOver scene and pass current level + reason so it can show the proper ending
+        const levelToRestart = (typeof this.currentLevel === 'number' && this.currentLevel >= 0) ? this.currentLevel : 0;
+            // for losing, switch to the GameOver scene (full-screen)
+            this.scene.start('GameOver', { level: levelToRestart, reason: reason });
+        
+    }
+    // startLevel is a method that begins a fixed-enemy level
+    startLevel(levelIndex) {
+        const level = this.levels[levelIndex];
+        if (!level) {
+            // no more levels -> player has completed all levels
+            this.GameOver('win');
+            return;
+        }
+
+        this.currentLevel = levelIndex;
+        this.remainingToSpawn = level.enemyCount;
+        this.remainingAlive = level.enemyCount;
+
+        // schedule spawns: repeat = enemyCount - 1 because first spawn occurs immediately below
+        this.timedEvent = this.time.addEvent({
+            delay: level.spawnInterval,
+            callback: () => {
+                // pick random attributes (you can alter this to be deterministic)
+                const randomId = Phaser.Math.RND.between(0, 11);
+                const randomPath = Phaser.Math.RND.between(0, 3);
+                const randomPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
+                const randomSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
+
+                if(this.coins < this.merchantThreshold){
+                this.addEnemy(randomId, randomPath, randomSpeed, randomPower);
+                this.remainingToSpawn--;
+                if (this.remainingToSpawn <= 0) {
+                    // all scheduled; stop the timed event
+                    if (this.timedEvent) this.timedEvent.remove(false);
+                }}
+            },
+            callbackScope: this,
+            repeat: level.enemyCount - 1
+        });
+
+        // spawn one immediately for nicer pacing:
+        const rId = Phaser.Math.RND.between(0, 11);
+        const rPath = Phaser.Math.RND.between(0, 3);
+        const rPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
+        const rSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
+        this.addEnemy(rId, rPath, rSpeed, rPower);
+        this.remainingToSpawn--;
     }
 
-    GameOver() {
-        this.gameStarted = false;
-        this.gameOverText.setVisible(true);
+    openShop() {
+        // Pause the game scene and launch the shop overlay
+        this.scene.pause(); // pause this Game scene
+        this.scene.launch('Shop'); // launch shop as an overlay scene
+        // increase the next threshold (20 -> 40 -> 60 ...)
+        this.nextShopThreshold += 20;
     }
+
 }

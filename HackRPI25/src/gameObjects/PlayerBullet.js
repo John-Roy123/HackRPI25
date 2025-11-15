@@ -4,8 +4,9 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
     power = 1;
     moveVelocity = 800;
 
-    constructor(scene, x, y, power, targetX, targetY) {
-        super(scene, x, y, ASSETS.spritesheet.tiles.key, power-1);
+    // textureKey: optional sprite key for this projectile (defaults to feather)
+    constructor(scene, x, y, power, targetX, targetY, textureKey = ASSETS.spritesheet.FeatherProjectile.key) {
+        super(scene, x, y, textureKey, 0);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -24,8 +25,12 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
             const vy = (dy / len) * this.moveVelocity;
             this.body.velocity.x = vx;
             this.body.velocity.y = vy;
+            // rotate sprite so the TOP of the sprite points in the direction of travel
+            this.setRotation(Math.atan2(vx, -vy));
         } else {
             this.setVelocityY(-this.moveVelocity);
+            // default upward travel -> top should point upwards (rotation 0)
+            this.setRotation(0);
         }
     }
 
@@ -55,4 +60,5 @@ export default class PlayerBullet extends Phaser.Physics.Arcade.Sprite {
     remove() {
         this.scene.removeBullet(this);
     }
+
 }

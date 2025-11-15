@@ -38,7 +38,19 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
 
         this.path.getPoint(this.pathIndex, this.pathVector); // get current coordinate based on percentage moved
 
-        this.setPosition(this.pathVector.x, this.pathVector.y); // set position of this enemy
+        // blend path following with movement toward player
+        let targetX = this.pathVector.x;
+        let targetY = this.pathVector.y;
+        
+        if (this.scene.player) {
+            const playerX = this.scene.player.x;
+            const playerY = this.scene.player.y;
+            // lerp between path target and player position (50% each)
+            targetX = Phaser.Math.Linear(this.pathVector.x, playerX, 0.3);
+            targetY = Phaser.Math.Linear(this.pathVector.y, playerY, 0.3);
+        }
+
+        this.setPosition(targetX, targetY); // set position of this enemy
 
         this.pathIndex += this.pathSpeed; // increment percentage moved by pathSpeed
 
@@ -64,7 +76,12 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
 
     fire() {
         this.fireCounter = Phaser.Math.RND.between(this.fireCounterMin, this.fireCounterMax);
-        this.scene.fireEnemyBullet(this.x, this.y, this.power);
+        // aim at player if available, otherwise fire downward
+        if (this.scene.player) {
+            this.scene.fireEnemyBullet(this.x, this.y, this.power, this.scene.player.x, this.scene.player.y);
+        } else {
+            this.scene.fireEnemyBullet(this.x, this.y, this.power);
+        }
     }
 
     initPath(pathId, speed) {

@@ -1,4 +1,15 @@
 export default {
+    'image': {
+        HealthIcon: {
+            key: 'HealthIcon',
+            args: ['assets/HealthIcon.png']
+        }
+        ,
+        WiseTurkey: {
+            key: 'WiseTurkey',
+            args: ['assets/WiseTurkey.png']
+        }
+    },
     // 'audio': {
     //     score: {
     //         key: 'sound',
@@ -26,5 +37,34 @@ export default {
                 frameHeight: 32
             }]
         },
+        TerryWalking: {
+            key: 'TerryWalking',
+            args: ['assets/TerryWalking.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        TerryKnives: {
+            key: 'TerryKnives',
+            args: ['assets/TerryKnives.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        FeatherProjectile: {
+            key: 'FeatherProjectile',
+            args: ['assets/FeatherProjectile.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        }
+        ,
+        KnifeProjectile: {
+            key: 'KnifeProjectile',
+            args: ['assets/KnifeProjectile.png', {
+                frameWidth: 32,
+                frameHeight: 32,
+            }]
+        }
     }
 };

@@ -1,24 +1,36 @@
 import ASSETS from '../assets.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-    velocityIncrement = 50;
-    velocityMax = 500;
+    velocityIncrement = 25;
+    velocityMax = 250;
     drag = 1000;
     fireRate = 10;
     fireCounter = 0;
-    health = 1;
+    health = 3;
 
     constructor(scene, x, y, shipId) {
-        super(scene, x, y, ASSETS.spritesheet.ships.key, shipId);
+        super(scene, x, y, ASSETS.spritesheet.TerryWalking.key, shipId);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
+        this.setScale(1.5);
+        // this.setSize(this.displayWidth, this.displayHeight); // update physics hitbox to match
+        this.body.setOffset((this.width - this.body.width) * 0.5, (this.height - this.body.height) * 0.5);
         this.setCollideWorldBounds(true); // prevent ship from leaving the screen
         this.setDepth(100); // make ship appear on top of other game objects
         this.scene = scene;
         this.setMaxVelocity(this.velocityMax); // limit maximum speed of ship
         this.setDrag(this.drag);
+
+        // default weapon
+        this.currentWeapon = {
+            name: 'feather',
+            bulletKey: ASSETS.spritesheet.FeatherProjectile.key,
+            power: 1,
+            walkAnimKey: 'walk'
+        };
+        this.walkAnimKey = this.currentWeapon.walkAnimKey;
     }
 
     preUpdate(time, delta) {
@@ -48,6 +60,41 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.body.velocity.x += moveDirection.x * this.velocityIncrement; // increase horizontal velocity
         this.body.velocity.y += moveDirection.y * this.velocityIncrement; // increase vertical velocity
+
+        // play walking animation when moving, stop when idle
+        const isMoving = (moveDirection.x !== 0) || (moveDirection.y !== 0);
+        if (isMoving) {
+            if (!this.anims.isPlaying || this.anims.currentAnim.key !== this.walkAnimKey) {
+                this.play(this.walkAnimKey);
+            }
+            // flip sprite horizontally when moving left/right for nicer feedback
+            if (moveDirection.x < 0) this.setFlipX(true);
+            else if (moveDirection.x > 0) this.setFlipX(false);
+        } else {
+            if (this.anims.isPlaying) this.stop();
+            // set to first frame (idle) when not moving
+            this.setFrame(0);
+        }
+    }
+
+    equipWeapon(weapon) {
+        // weapon: { name, bulletKey, power, playerTextureKey, walkAnimKey }
+        if (!weapon) return;
+        this.currentWeapon.name = weapon.name || this.currentWeapon.name;
+        this.currentWeapon.bulletKey = weapon.bulletKey || this.currentWeapon.bulletKey;
+        this.currentWeapon.power = weapon.power || this.currentWeapon.power;
+        if (weapon.walkAnimKey) this.currentWeapon.walkAnimKey = weapon.walkAnimKey;
+        this.walkAnimKey = this.currentWeapon.walkAnimKey;
+
+        if (weapon.playerTextureKey) {
+            this.setTexture(weapon.playerTextureKey);
+            this.setFrame(0);
+            // ensure physics body matches new visual size
+            this.setSize(this.displayWidth, this.displayHeight);
+            if (this.body && this.body.setOffset) {
+                this.body.setOffset((this.width - this.body.width) * 0.5, (this.height - this.body.height) * 0.5);
+            }
+        }
     }
 
     fire() {
@@ -65,6 +112,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     hit(damage) {
         this.health -= damage;
+
+        // notify UI of health change
+        if (this.scene && this.scene.events) this.scene.events.emit('healthUpdated', this.health);
 
         if (this.health <= 0) this.die();
     }
