@@ -57,6 +57,13 @@ export default {
                 frameWidth: 32,
                 frameHeight: 32,
             }]
+        },
+        pilgrims: {
+            key: 'pilgrims',
+            args: ['assets/pilgrims.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
         }
     }
 };

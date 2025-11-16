@@ -16,15 +16,15 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
     ]
 
     constructor(scene, shipId, pathId, speed, power) {
-        const startingId = 12;
-        super(scene, 500, 500, ASSETS.spritesheet.ships.key, startingId + shipId);
+        const startingId = 0;
+        super(scene, 500, 500, ASSETS.spritesheet.pilgrims.key, startingId + shipId);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
         this.power = power;
         this.fireCounter = Phaser.Math.RND.between(this.fireCounterMin, this.fireCounterMax); // random firing interval
-        this.setFlipY(true); // flip image vertically
+        this.setFlipY(false); // flip image vertically
         this.setDepth(10);
         this.scene = scene;
 
