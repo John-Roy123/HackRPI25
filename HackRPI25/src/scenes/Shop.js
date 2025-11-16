@@ -1,4 +1,9 @@
 import ASSETS from '../assets.js';
+import { GoogleGenAI } from "@google/genai";
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+// The client gets the API key from the environment variable `GEMINI_API_KEY`.
+const ai = new GoogleGenAI({apiKey});
 
 export class Shop extends Phaser.Scene {
     constructor() {
@@ -155,3 +160,6 @@ export class Shop extends Phaser.Scene {
         this.time.addEvent({ delay: 1200, callback: () => this.feedback.setText('') });
     }
 }
+
+    function generatePrompt(){
+    }
