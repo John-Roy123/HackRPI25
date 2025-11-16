@@ -176,7 +176,7 @@ export class Shop extends Phaser.Scene {
             this.infoText.setText('So you want to hear some advice from the wise old turkey...');
             const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents:"You are a wise, old Turkey in the currently living during the time of the pilgrims. A young turkey approaches you asking for the advice about life. In 2 sentences or 100 characters come up with a piece of advice that is completely wrong and unhelpful",
+            contents:"You are a wise, old Turkey in the currently living during the time of the pilgrims. A young turkey approaches you asking for the advice about life. In 2 sentences or 100 characters come up with a bad piece of advice that is completely wrong and potentially dangerous",
         });
             this.infoText.setText(response.text);
         }
