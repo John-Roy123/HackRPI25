@@ -1,4 +1,9 @@
 import ASSETS from '../assets.js';
+import { GoogleGenAI } from "@google/genai";
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+// The client gets the API key from the environment variable `GEMINI_API_KEY`.
+const ai = new GoogleGenAI({apiKey});
 
 export class Shop extends Phaser.Scene {
     constructor() {
@@ -134,16 +139,13 @@ export class Shop extends Phaser.Scene {
         this.feedback = this.add.text(panelX, panelY + panelH / 2 - 120, '', { fontFamily: 'Arial', fontSize: 20, color: '#ffffff' }).setOrigin(0.5).setDepth(202);
     }
 
-    showInfo() {
-        const infoLines = [
-            'Tip: Enemies aim where you stand — keep moving!',
-            'Tip: Shooting while strafing conserves position.',
-            'Tip: Knives do more damage at close range.',
-            'Tip: Merchant prices may change with levels.'
-        ];
-        const idx = Phaser.Math.RND.between(0, infoLines.length - 1);
-        this.infoText.setText(infoLines[idx]);
-        this.time.addEvent({ delay: 5000, callback: () => this.infoText.setText('') });
+    async showInfo() {
+        this.infoText.setText('So you want to hear some advice from the wise old turkey...');
+            const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents:"You are a wise, old Turkey in the currently living during the time of the pilgrims. A young turkey approaches you asking for the advice about life. In 2 sentences or 100 characters come up with a piece of advice that is completely wrong and unhelpful",
+        });
+        this.infoText.setText(response.text);
     }
 
     showFeedback(message) {
@@ -151,3 +153,6 @@ export class Shop extends Phaser.Scene {
         this.time.addEvent({ delay: 1200, callback: () => this.feedback.setText('') });
     }
 }
+
+    function generatePrompt(){
+    }
