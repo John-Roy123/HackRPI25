@@ -32,11 +32,18 @@ export class Shop extends Phaser.Scene {
         const rightStartX = panelX - panelW / 2 + leftW + 30;
 
         // WiseTurkey: interactive sprite that sells information
+        // Editable scale: change this.wiseScale to adjust visual size
+        this.wiseScale = 3.0; // make the turkey much larger by default
         const turkeyX = panelX - panelW / 2 + Math.floor(leftW / 2) + 20;
         const turkeyY = panelY - 20;
         this.wiseCost = 15; // cost to buy a piece of information
-        this.wise = this.add.image(turkeyX, turkeyY, ASSETS.image.WiseTurkey.key).setDepth(202).setScale(2.0).setInteractive({ useHandCursor: true });
-        this.wise.setScale(0.9);
+
+        // Wisdom sign above the turkey: use asset if available, otherwise show text sign
+        const sign = this.add.image(turkeyX, turkeyY - 90, ASSETS.image.WisdomSign.key).setDepth(202).setOrigin(0.5);
+        sign.setScale(1.4);
+
+        this.wise = this.add.image(turkeyX, turkeyY, ASSETS.image.WiseTurkey.key).setDepth(202).setInteractive({ useHandCursor: true });
+        this.wise.setScale(this.wiseScale);
         this.wise.on('pointerdown', () => {
             if (gameScene.coins >= this.wiseCost) {
                 gameScene.updatecoins(-this.wiseCost);
@@ -50,11 +57,14 @@ export class Shop extends Phaser.Scene {
         // info text area under wise turkey
         this.infoText = this.add.text(turkeyX - leftW / 2 + 12, turkeyY + 80, '', { fontFamily: 'Arial', fontSize: 18, color: '#ffffff', wordWrap: { width: leftW - 24 } }).setDepth(202);
 
+        // Items list -- keep references so items can be removed or replaced when purchased
         const items = [
             { id: 'health', label: 'Health +1', cost: 75 },
             { id: 'speed', label: 'Max Speed +100', cost: 50 },
             { id: 'knives', label: 'Knives (weapon)', cost: 200 }
         ];
+
+        this.shopItems = {}; // store UI refs by item id
 
         const startY = panelY - panelH / 2 + 150;
         items.forEach((item, idx) => {
@@ -63,6 +73,10 @@ export class Shop extends Phaser.Scene {
             const cost = this.add.text(panelX + panelW / 2 - 120, y, `${item.cost}c`, { fontFamily: 'Arial', fontSize: 26, color: '#ffffff' }).setDepth(202);
 
             const buy = this.add.text(panelX + panelW / 2 - 40, y, 'Buy', { fontFamily: 'Arial Black', fontSize: 26, color: '#00ff00' }).setOrigin(0.5).setDepth(202).setInteractive({ useHandCursor: true });
+
+            // store refs
+            this.shopItems[item.id] = { label, cost, buy, meta: item };
+
             buy.on('pointerdown', () => {
                 if (gameScene.coins >= item.cost) {
                     // apply effect
@@ -87,6 +101,15 @@ export class Shop extends Phaser.Scene {
                                 playerTextureKey: ASSETS.spritesheet.TerryKnives.key,
                                 walkAnimKey: 'walk_knives'
                             });
+
+                            // after purchase, remove/replace this shop item with a placeholder
+                            const ui = this.shopItems['knives'];
+                            if (ui) {
+                                ui.label.setText('New Weapon (coming soon)');
+                                ui.cost.setText('--');
+                                ui.buy.setText('Sold').setStyle({ color: '#888888' });
+                                ui.buy.disableInteractive();
+                            }
                         }
                     }
 

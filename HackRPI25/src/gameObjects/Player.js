@@ -43,19 +43,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     checkInput() {
         const cursors = this.scene.cursors; // get cursors object from Game scene
-        const leftKey = cursors.left.isDown;
-        const rightKey = cursors.right.isDown;
-        const upKey = cursors.up.isDown;
-        const downKey = cursors.down.isDown;
+        const aKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown;
+        const dKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown;
+        const wKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown;
+        const sKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown;
         const spaceKey = cursors.space.isDown;
         const pointerDown = this.scene.input.activePointer.isDown;
 
         const moveDirection = { x: 0, y: 0 }; // default move direction
 
-        if (leftKey) moveDirection.x--;
-        if (rightKey) moveDirection.x++;
-        if (upKey) moveDirection.y--;
-        if (downKey) moveDirection.y++;
+        if (aKey) moveDirection.x--;
+        if (dKey) moveDirection.x++;
+        if (wKey) moveDirection.y--;
+        if (sKey) moveDirection.y++;
         if (spaceKey || pointerDown) this.fire();
 
         this.body.velocity.x += moveDirection.x * this.velocityIncrement; // increase horizontal velocity

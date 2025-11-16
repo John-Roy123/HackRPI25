@@ -8,20 +8,12 @@ export default {
         WiseTurkey: {
             key: 'WiseTurkey',
             args: ['assets/WiseTurkey.png']
+        },
+        WisdomSign: {
+            key: 'WisdomSign',
+            args: ['assets/WisdomSign.png']
         }
     },
-    // 'audio': {
-    //     score: {
-    //         key: 'sound',
-    //         args: ['assets/sound.mp3', 'assets/sound.m4a', 'assets/sound.ogg']
-    //     },
-    // },
-    // 'image': {
-    //     spikes: {
-    //         key: 'spikes',
-    //         args: ['assets/spikes.png']
-    //     },
-    // },
     'spritesheet': {
         ships: {
             key: 'ships',

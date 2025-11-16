@@ -30,6 +30,35 @@ export class Game extends Phaser.Scene {
         this.initMap();
         // launch UI scene on top of Game
         this.scene.launch('UI');
+
+        // when the Game scene is resumed (for example after closing the Shop), handle next-wave start
+        this.events.on('resume', () => {
+            if (this.waitingForNextWave) {
+                this.waitingForNextWave = false;
+                this.startNextWave();
+            }
+        });
+
+        this.waves = [
+            {
+                spawnInterval: 600,
+                enemies: [
+                    { type: 0, count: 20, power: 1, health: 1, speed: 0.0003 }
+                ]
+            },
+            {
+                spawnInterval: 600,
+                enemies: [
+                    { type: 0, count: 25, power: 1, health: 2, speed: 0.0005 }
+                ]
+            },
+            {
+                spawnInterval: 600,
+                enemies: [
+                    { type: 0, count: 30, power: 1, health: 3, speed: 0.0008 }
+                ]
+            }
+        ];
     }
 
     update() {
@@ -38,15 +67,6 @@ export class Game extends Phaser.Scene {
     if (!this.gameStarted) return;
 
     this.player.update();
-
-    // only spawn enemies while under the coin threshold
-    if (this.coins < this.merchantThreshold) {
-        if (this.spawnEnemyCounter > 0) {
-            this.spawnEnemyCounter--;
-        } else {
-            this.addFlyingGroup();
-        }
-    }
 }
 
     initVariables() {
@@ -61,7 +81,7 @@ export class Game extends Phaser.Scene {
         this.tiles = [50, 50, 50, 50, 50, 50, 50, 50, 50, 110, 110, 110, 110, 110, 50, 50, 50, 50, 50, 50, 50, 50, 50, 110, 110, 110, 110, 110, 36, 48, 60, 72, 84];
         this.tileSize = 32; // width and height of a tile in pixels
 
-        this.mapOffset = 10; // offset (in tiles) to move the map above the top of the screen
+        this.mapOffset = 0; // offset (in tiles) to move the map above the top of the screen
         this.mapTop = -this.mapOffset * this.tileSize; // offset (in pixels) to move the map above the top of the screen
         this.mapHeight = Math.ceil(this.scale.height / this.tileSize) + this.mapOffset + 1; // height of the tile map (in tiles)
         this.mapWidth = Math.ceil(this.scale.width / this.tileSize); // width of the tile map (in tiles)
@@ -72,18 +92,18 @@ export class Game extends Phaser.Scene {
         this.map; // rference to tile map
         this.groundLayer; // reference to ground layer of tile map
 
-        this.levels = [
-            { enemyCount: 6, spawnInterval: 400, minPower: 1, maxPower: 2, minSpeed: 0.0001, maxSpeed: 0.0005 },
-            { enemyCount: 10, spawnInterval: 320, minPower: 1, maxPower: 3, minSpeed: 0.00015, maxSpeed: 0.0008 },
-            // add more levels...
-        ];
-        this.currentLevel = -1;
-        this.remainingToSpawn = 0;
-        this.remainingAlive = 0;
-
         // shop / kill tracking
         this.enemiesKilled = 0; // total enemies killed since level start
         this.nextShopThreshold = 20; // first shop opens after this many kills; increases each time
+
+        // wave system (optional): define waves where each wave describes enemy types/counts/health
+        // example format:
+        // this.waves = [ { spawnInterval: 300, enemies: [ { type: 2, count: 5, power:1, health:2, path:0, speed:0.0002 }, ... ] }, ... ];
+        this.waves = [];
+        this.currentWaveIndex = -1;
+        this.waitingForNextWave = false;
+        this.waveRemainingToSpawn = 0;
+        this.waveRemainingAlive = 0;
     }
 
     initGameUi() {
@@ -231,12 +251,9 @@ export class Game extends Phaser.Scene {
     startGame() {
         this.gameStarted = true;
         this.tutorialText.setVisible(false);
-        // start requested restart level if provided, otherwise start level 0
-        if (this.requestedRestartLevel !== null) {
-            this.startLevel(this.requestedRestartLevel);
-            this.requestedRestartLevel = null; // clear after use
-        } else {
-            this.startLevel(0);
+        // start first wave
+        if (this.waves && this.waves.length > 0) {
+            this.startWave(0);
         }
     }
 
@@ -291,13 +308,22 @@ export class Game extends Phaser.Scene {
         );
     }
 
-    addEnemy(shipId, pathId, speed, power) {
+    addEnemy(shipId, pathId, speed, power, health) {
         const enemy = new EnemyFlying(this, shipId, pathId, speed, power);
+        if (typeof health === 'number') enemy.health = health;
         this.enemyGroup.add(enemy);
     }
 
     removeEnemy(enemy) {
         this.enemyGroup.remove(enemy, true, true);
+        // if wave system active, decrement counters and check for wave completion
+        if (typeof this.waveRemainingAlive === 'number' && this.currentWaveIndex >= 0) {
+            this.waveRemainingAlive--;
+            if (this.waveRemainingAlive <= 0 && this.waveRemainingToSpawn <= 0) {
+                // wave complete -> open shop and wait for resume to start next wave
+                this.openShop();
+            }
+        }
     }
 
     addExplosion(x, y) {
@@ -317,15 +343,6 @@ hitEnemy(bullet, enemy) {
 
     // track kills and open shop when cumulative threshold reached
     this.enemiesKilled++;
-    if (this.enemiesKilled >= this.nextShopThreshold) {
-        this.openShop();
-    }
-
-    // AFTER all that, check for the coin threshold once
-    if (!this.merchantOpened && this.coins >= this.merchantThreshold) {
-        console.info(`Merchant opening: coins=${this.coins} (threshold=${this.merchantThreshold})`);
-        
-    }
 }
 
     updatecoins(points) {
@@ -339,57 +356,85 @@ hitEnemy(bullet, enemy) {
 
 
     GameOver(reason = 'lose') {
-        // navigate to the GameOver scene and pass current level + reason so it can show the proper ending
-        const levelToRestart = (typeof this.currentLevel === 'number' && this.currentLevel >= 0) ? this.currentLevel : 0;
-            // for losing, switch to the GameOver scene (full-screen)
-            this.scene.start('GameOver', { level: levelToRestart, reason: reason });
-        
+        // navigate to the GameOver scene with the reason
+        this.scene.start('GameOver', { reason: reason });
     }
-    // startLevel is a method that begins a fixed-enemy level
-    startLevel(levelIndex) {
-        const level = this.levels[levelIndex];
-        if (!level) {
-            // no more levels -> player has completed all levels
-            this.GameOver('win');
+
+    // Wave system: start a configured wave (wave index)
+    startWave(waveIndex) {
+        const wave = this.waves[waveIndex];
+        if (!wave) return;
+
+        this.currentWaveIndex = waveIndex;
+        this.waitingForNextWave = false;
+
+        // build spawn queue from wave definition
+        this._waveSpawnQueue = [];
+        for (const group of wave.enemies) {
+            const type = group.type;
+            const count = group.count || 1;
+            const power = group.power || 1;
+            const health = (typeof group.health === 'number') ? group.health : undefined;
+            const speed = (typeof group.speed === 'number') ? group.speed : group.speed;
+            const path = (typeof group.path === 'number') ? group.path : null;
+
+            for (let i = 0; i < count; i++) {
+                this._waveSpawnQueue.push({ shipId: type, pathId: path, speed: speed, power: power, health: health });
+            }
+        }
+
+        this.waveRemainingToSpawn = this._waveSpawnQueue.length;
+        this.waveRemainingAlive = this._waveSpawnQueue.length;
+
+        if (this.waveRemainingAlive <= 0) {
+            // nothing to spawn, open the shop immediately
+            this.openShop();
             return;
         }
 
-        this.currentLevel = levelIndex;
-        this.remainingToSpawn = level.enemyCount;
-        this.remainingAlive = level.enemyCount;
+        const interval = wave.spawnInterval || 400;
 
-        // schedule spawns: repeat = enemyCount - 1 because first spawn occurs immediately below
-        this.timedEvent = this.time.addEvent({
-            delay: level.spawnInterval,
+        // schedule spawns
+        this._waveTimer = this.time.addEvent({
+            delay: interval,
             callback: () => {
-                // pick random attributes (you can alter this to be deterministic)
-                const randomId = Phaser.Math.RND.between(0, 11);
-                const randomPath = Phaser.Math.RND.between(0, 3);
-                const randomPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
-                const randomSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
-
-                if(this.coins < this.merchantThreshold){
-                this.addEnemy(randomId, randomPath, randomSpeed, randomPower);
-                this.remainingToSpawn--;
-                if (this.remainingToSpawn <= 0) {
-                    // all scheduled; stop the timed event
-                    if (this.timedEvent) this.timedEvent.remove(false);
-                }}
+                const next = this._waveSpawnQueue.shift();
+                if (next) {
+                    const pickPath = (typeof next.pathId === 'number') ? next.pathId : Phaser.Math.RND.between(0, 3);
+                    const pickSpeed = (typeof next.speed === 'number') ? next.speed : Phaser.Math.RND.realInRange(0.0001, 0.001);
+                    this.addEnemy(next.shipId, pickPath, pickSpeed, next.power, next.health);
+                    this.waveRemainingToSpawn--;
+                }
+                if (this.waveRemainingToSpawn <= 0) {
+                    if (this._waveTimer) this._waveTimer.remove(false);
+                }
             },
             callbackScope: this,
-            repeat: level.enemyCount - 1
+            repeat: this._waveSpawnQueue.length - 1
         });
 
-        // spawn one immediately for nicer pacing:
-        const rId = Phaser.Math.RND.between(0, 11);
-        const rPath = Phaser.Math.RND.between(0, 3);
-        const rPower = Phaser.Math.RND.between(level.minPower, level.maxPower);
-        const rSpeed = Phaser.Math.RND.realInRange(level.minSpeed, level.maxSpeed);
-        this.addEnemy(rId, rPath, rSpeed, rPower);
-        this.remainingToSpawn--;
+        // spawn one immediately for pacing
+        const first = this._waveSpawnQueue.shift();
+        if (first) {
+            const pickPath = (typeof first.pathId === 'number') ? first.pathId : Phaser.Math.RND.between(0, 3);
+            const pickSpeed = (typeof first.speed === 'number') ? first.speed : Phaser.Math.RND.realInRange(0.0001, 0.001);
+            this.addEnemy(first.shipId, pickPath, pickSpeed, first.power, first.health);
+            this.waveRemainingToSpawn--;
+        }
+    }
+
+    startNextWave() {
+        const nextIndex = this.currentWaveIndex + 1;
+        if (nextIndex >= 0 && nextIndex < this.waves.length) {
+            this.startWave(nextIndex);
+        } else {
+            // all waves completed
+            this.GameOver('win');
+        }
     }
 
     openShop() {
+        this.waitingForNextWave = true;
         // Pause the game scene and launch the shop overlay
         this.scene.pause(); // pause this Game scene
         this.scene.launch('Shop'); // launch shop as an overlay scene

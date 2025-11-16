@@ -29,6 +29,9 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
         this.scene = scene;
 
         this.initPath(pathId, speed); // choose path to follow
+        // chase behavior configuration
+        this.chaseRadius = 150; // only blend toward player when within this many pixels of the path point
+        this.chaseFactor = 0.18; // blend factor when chasing (0..1) -- lower means weaker follow
     }
 
     preUpdate(time, delta) {
@@ -38,16 +41,19 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
 
         this.path.getPoint(this.pathIndex, this.pathVector); // get current coordinate based on percentage moved
 
-        // blend path following with movement toward player
+        // blend path following with movement toward player only when close
         let targetX = this.pathVector.x;
         let targetY = this.pathVector.y;
-        
+
         if (this.scene.player) {
             const playerX = this.scene.player.x;
             const playerY = this.scene.player.y;
-            // lerp between path target and player position (50% each)
-            targetX = Phaser.Math.Linear(this.pathVector.x, playerX, 0.3);
-            targetY = Phaser.Math.Linear(this.pathVector.y, playerY, 0.3);
+            const dist = Phaser.Math.Distance.Between(this.pathVector.x, this.pathVector.y, playerX, playerY);
+            if (dist <= this.chaseRadius) {
+                // only slightly move toward player so pathing remains primary
+                targetX = Phaser.Math.Linear(this.pathVector.x, playerX, this.chaseFactor);
+                targetY = Phaser.Math.Linear(this.pathVector.y, playerY, this.chaseFactor);
+            }
         }
 
         this.setPosition(targetX, targetY); // set position of this enemy
