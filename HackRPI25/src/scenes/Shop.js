@@ -139,7 +139,7 @@ export class Shop extends Phaser.Scene {
         this.feedback = this.add.text(panelX, panelY + panelH / 2 - 120, '', { fontFamily: 'Arial', fontSize: 20, color: '#ffffff' }).setOrigin(0.5).setDepth(202);
     }
 
-    showInfo() {
+    async showInfo() {
         const infoLines = [
             'Not all turkeys look the same you know...',
             'Tip: Shooting while strafing conserves position.',
@@ -150,9 +150,20 @@ export class Shop extends Phaser.Scene {
             'Tip: Turkeys will rule the world one day.',
             'I wonder what happens if you get the health bar off the screen?'
         ];
-        const idx = Phaser.Math.RND.between(0, infoLines.length - 1);
-        this.infoText.setText(infoLines[idx]);
-        this.time.addEvent({ delay: 5000, callback: () => this.infoText.setText('') });
+        const idx = Phaser.Math.RND.between(0, 2*(infoLines.length));
+        if(idx > (infoLines.length-1)){
+            this.infoText.setText('So you want to hear some advice from the wise old turkey...');
+            const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents:"You are a wise, old Turkey in the currently living during the time of the pilgrims. A young turkey approaches you asking for the advice about life. In 2 sentences or 100 characters come up with a piece of advice that is completely wrong and unhelpful",
+        });
+            this.infoText.setText(response.text);
+        }
+        else{
+            this.infoText.setText(infoLines[idx]);
+            this.time.addEvent({ delay: 5000, callback: () => this.infoText.setText('') });
+        }
+        
     }
 
     showFeedback(message) {
