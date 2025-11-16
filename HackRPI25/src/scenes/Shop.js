@@ -136,10 +136,14 @@ export class Shop extends Phaser.Scene {
 
     showInfo() {
         const infoLines = [
-            'Tip: Enemies aim where you stand — keep moving!',
+            'Not all turkeys look the same you know...',
             'Tip: Shooting while strafing conserves position.',
             'Tip: Knives do more damage at close range.',
-            'Tip: Merchant prices may change with levels.'
+            'Tip: Turkey inflation only affects the poor.',
+            'Tip: Enemies tend to shoot at you — keep moving!',
+            'Tip: If you get every upgrade, you win (you dont I lied).',
+            'Tip: Turkeys will rule the world one day.',
+            'I wonder what happens if you get the health bar off the screen?'
         ];
         const idx = Phaser.Math.RND.between(0, infoLines.length - 1);
         this.infoText.setText(infoLines[idx]);

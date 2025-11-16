@@ -57,6 +57,18 @@ export class Game extends Phaser.Scene {
                 enemies: [
                     { type: 0, count: 30, power: 1, health: 3, speed: 0.0008 }
                 ]
+            },
+            {
+                spawnInterval: 500,
+                enemies: [
+                    { type: 0, count: 40, power: 2, health: 4, speed: 0.001 }
+                ]
+            },
+            {
+                spawnInterval: 500,
+                enemies: [
+                    { type: 0, count: 50, power: 2, health: 5, speed: 0.001 }
+                ]
             }
         ];
     }
