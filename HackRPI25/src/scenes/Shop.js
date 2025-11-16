@@ -153,6 +153,3 @@ export class Shop extends Phaser.Scene {
         this.time.addEvent({ delay: 1200, callback: () => this.feedback.setText('') });
     }
 }
-
-    function generatePrompt(){
-    }
