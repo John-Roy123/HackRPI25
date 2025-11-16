@@ -5,17 +5,25 @@ export default class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
     moveVelocity = 200;
 
     // optional targetX, targetY for directional bullets; if not provided, fires downward
-    constructor(scene, x, y, power, targetX, targetY) {
-        const tileId = 11;
-        super(scene, x, y, ASSETS.spritesheet.tiles.key, tileId + power);
+    // textureKey and textureScale allow custom projectile appearance
+    constructor(scene, x, y, power, targetX, targetY, textureKey, textureScale) {
+        const key = textureKey || ASSETS.spritesheet.tiles.key;
+        const frame = textureKey ? 0 : (11 + power);
+        super(scene, x, y, key, frame);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
         this.power = power;
-        this.setSize(16, 24); // resize hitbox to correctly fit image instead of using the entire tile size
         this.setDepth(10);
         this.scene = scene;
+
+        // scale the projectile if specified
+        if (typeof textureScale === 'number' && textureScale !== 1) {
+            this.setScale(textureScale);
+        }
+
+        this.setSize(16, 24); // resize hitbox to correctly fit image instead of using the entire tile size
 
         // directional firing: calculate velocity toward target
         if (typeof targetX === 'number' && typeof targetY === 'number') {

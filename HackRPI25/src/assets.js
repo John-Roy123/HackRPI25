@@ -58,9 +58,44 @@ export default {
                 frameHeight: 32,
             }]
         },
-        pilgrims: {
-            key: 'pilgrims',
-            args: ['assets/pilgrims.png', {
+        Cannonball: {
+            key: 'Cannonball',
+            args: ['assets/Cannonball.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        TerryMusket: {
+            key: 'TerryMusket',
+            args: ['assets/TerryMusket.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        PitchforkPilgrim: {
+            key: 'PitchforkPilgrim',
+            args: ['assets/PitchforkPilgrim.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        MusketPilgrim: {
+            key: 'MusketPilgrim',
+            args: ['assets/MusketPilgrim.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        MeleePilgrim: {
+            key: 'MeleePilgrim',
+            args: ['assets/MeleePilgrim.png', {
+                frameWidth: 64,
+                frameHeight: 64,
+            }]
+        },
+        CannonPilgrim: {
+            key: 'CannonPilgrim',
+            args: ['assets/CannonPilgrim.png', {
                 frameWidth: 64,
                 frameHeight: 64,
             }]

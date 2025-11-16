@@ -6,7 +6,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     drag = 1000;
     fireRate = 10;
     fireCounter = 0;
-    health = 3;
+    health = 50;
 
     constructor(scene, x, y, shipId) {
         super(scene, x, y, ASSETS.spritesheet.TerryWalking.key, shipId);

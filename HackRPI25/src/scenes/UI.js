@@ -14,9 +14,25 @@ export class UI extends Phaser.Scene {
             .setDepth(200)
             .setScrollFactor(0); // fix to screen, ignore camera
 
+        // Create wave counter text
+        const currentWave = (gameScene.currentWaveIndex >= 0) ? (gameScene.currentWaveIndex + 1) : 0;
+        const totalWaves = (gameScene.waves && gameScene.waves.length) ? gameScene.waves.length : 0;
+        this.waveText = this.add.text(this.scale.width - 20, 20, `Wave ${currentWave} / ${totalWaves}`, {
+            fontFamily: 'Arial Black', fontSize: 28, color: '#ffff00',
+            stroke: '#000000', strokeThickness: 8,
+        })
+            .setOrigin(1, 0)
+            .setDepth(200)
+            .setScrollFactor(0); // fix to screen
+
         // Listen to Game scene's coin updates
         gameScene.events.on('coinsUpdated', (newCoins) => {
             this.coinsText.setText(`coins: ${newCoins}`);
+        });
+
+        // Listen to wave start/progression
+        gameScene.events.on('waveStarted', (waveIndex, totalWaves) => {
+            this.waveText.setText(`Wave ${waveIndex + 1} / ${totalWaves}`);
         });
 
         // Health icons

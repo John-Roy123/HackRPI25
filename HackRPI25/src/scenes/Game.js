@@ -43,31 +43,44 @@ export class Game extends Phaser.Scene {
             {
                 spawnInterval: 600,
                 enemies: [
-                    { type: 0, count: 20, power: 1, health: 1, speed: 0.0003 }
+                    { type: 0, count: 20, power: 0, health: 0, speed: 0.0000 }
                 ]
             },
             {
                 spawnInterval: 600,
                 enemies: [
-                    { type: 0, count: 25, power: 1, health: 2, speed: 0.0005 }
+                    { type: 0, count: 15, power: 0, health: 1, speed: 0.0003 },
+                    { type: 1, count: 10, power: 0, health: 0, speed: 0.0000 }
                 ]
             },
             {
                 spawnInterval: 600,
                 enemies: [
-                    { type: 0, count: 30, power: 1, health: 3, speed: 0.0008 }
+                    { type: 0, count: 15, power: 2, health: 1, speed: 0.001 },
+                    { type: 1, count: 20, power: 1, health: 2, speed: 0.0008 }
                 ]
             },
             {
                 spawnInterval: 500,
                 enemies: [
-                    { type: 0, count: 40, power: 2, health: 4, speed: 0.001 }
+                    { type: 1, count: 20, power: 2, health: 2, speed: 0.0015 },
+                    { type: 2, count: 20, power: 1, health: 2, speed: 0.0008 }
                 ]
             },
             {
                 spawnInterval: 500,
                 enemies: [
-                    { type: 0, count: 50, power: 2, health: 5, speed: 0.001 }
+                    { type: 0, count: 20, power: 2, health: 3, speed: 0.002 },
+                    { type: 2, count: 20, power: 2, health: 3, speed: 0.001 },
+                    { type: 3, count: 10, power: 3, health: 4, speed: 0.0005 }
+                ]
+            },
+            {
+                spawnInterval: 400,
+                enemies: [
+                    { type: 0, count: 30, power: 3, health: 4, speed: 0.005 },
+                    { type: 2, count: 20, power: 2, health: 4, speed: 0.0015 },
+                    { type: 3, count: 20, power: 3, health: 4, speed: 0.0005 }
                 ]
             }
         ];
@@ -108,9 +121,19 @@ export class Game extends Phaser.Scene {
         this.enemiesKilled = 0; // total enemies killed since level start
         this.nextShopThreshold = 20; // first shop opens after this many kills; increases each time
 
-        // wave system (optional): define waves where each wave describes enemy types/counts/health
+        // enemy type registry: define base stats and sprite/frame for each enemy type id
+        // Add new enemy types here to make them available to waves
+        // Example type: { spriteSheet: ASSETS.spritesheet.ships.key, frame: 0, baseHealth:1, basePower:1, baseSpeed:0.0002, projectile:..., projectileScale:1, melee:false, walkAnim:'enemy_walk_0' }
+        this.enemyTypes = {
+            0: { spriteSheet: ASSETS.spritesheet.PitchforkPilgrim.key, baseHealth: 1, basePower: 1, baseSpeed: 0.0003, chaseRadius: 100, chaseFactor: 0.18, melee: true, walkAnim: 'enemy_walk_0' },
+            1: { spriteSheet: ASSETS.spritesheet.MusketPilgrim.key, baseHealth: 1, basePower: 2, baseSpeed: 0.0002, chaseRadius: 150, chaseFactor: 0.18, projectile: ASSETS.spritesheet.Cannonball.key, projectileScale: 0.5, melee: false, walkAnim: 'enemy_walk_1' },
+            2: { spriteSheet: ASSETS.spritesheet.MeleePilgrim.key, baseHealth: 2, basePower: 2, baseSpeed: 0.0001, chaseRadius: 100, chaseFactor: 0.18, melee: true, walkAnim: 'enemy_walk_2' },
+            3: { spriteSheet: ASSETS.spritesheet.CannonPilgrim.key, baseHealth: 2, basePower: 3, baseSpeed: 0.00005, chaseRadius: 200, chaseFactor: 0.18, projectile: ASSETS.spritesheet.Cannonball.key, projectileScale: 1.0, melee: false, walkAnim: 'enemy_walk_3' }
+        };
+
+        // wave system (optional): define waves where each wave describes enemy groups that ADD to base values
         // example format:
-        // this.waves = [ { spawnInterval: 300, enemies: [ { type: 2, count: 5, power:1, health:2, path:0, speed:0.0002 }, ... ] }, ... ];
+        // this.waves = [ { spawnInterval: 300, enemies: [ { type: 2, count: 5, power:1, health:2, path:0, speed:0.0001 }, ... ] }, ... ];
         this.waves = [];
         this.currentWaveIndex = -1;
         this.waitingForNextWave = false;
@@ -160,7 +183,39 @@ export class Game extends Phaser.Scene {
             frameRate: 12,
             repeat: -1
         });
-        
+        // walking animation for the musket player sprite
+        this.anims.create({
+            key: 'walk_musket',
+            frames: this.anims.generateFrameNumbers('TerryMusket', { start: 0, end: 3}),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        // Enemy walk animations (one per enemy type)
+        this.anims.create({
+            key: 'enemy_walk_0',
+            frames: this.anims.generateFrameNumbers('PitchforkPilgrim', { start: 0, end: 3}),
+            frameRate: 10,
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'enemy_walk_1',
+            frames: this.anims.generateFrameNumbers('MusketPilgrim', { start: 0, end: 3}),
+            frameRate: 10,
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'enemy_walk_2',
+            frames: this.anims.generateFrameNumbers('MeleePilgrim', { start: 0, end: 2}),
+            frameRate: 10,
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'enemy_walk_3',
+            frames: this.anims.generateFrameNumbers('CannonPilgrim', { start: 0, end: 4}),
+            frameRate: 10,
+            repeat: -1
+        });
     }
 
     initPhysics() {
@@ -289,9 +344,9 @@ export class Game extends Phaser.Scene {
         this.playerBulletGroup.remove(bullet, true, true);
     }
 
-    // fireEnemyBullet: optional targetX, targetY for directional bullets
-    fireEnemyBullet(x, y, power, targetX, targetY) {
-        const bullet = new EnemyBullet(this, x, y, power, targetX, targetY);
+    // fireEnemyBullet: optional targetX, targetY for directional bullets; textureKey and textureScale for custom projectile
+    fireEnemyBullet(x, y, power, targetX, targetY, textureKey, textureScale) {
+        const bullet = new EnemyBullet(this, x, y, power, targetX, targetY, textureKey, textureScale);
         this.enemyBulletGroup.add(bullet);
     }
 
@@ -321,8 +376,7 @@ export class Game extends Phaser.Scene {
     }
 
     addEnemy(shipId, pathId, speed, power, health) {
-        const enemy = new EnemyFlying(this, shipId, pathId, speed, power);
-        if (typeof health === 'number') enemy.health = health;
+        const enemy = new EnemyFlying(this, shipId, pathId, speed, power, health);
         this.enemyGroup.add(enemy);
     }
 
@@ -380,18 +434,24 @@ hitEnemy(bullet, enemy) {
         this.currentWaveIndex = waveIndex;
         this.waitingForNextWave = false;
 
-        // build spawn queue from wave definition
+        // emit wave started event for UI
+        this.events.emit('waveStarted', waveIndex, this.waves.length);
+
+        // build spawn queue from wave definition -- wave values are ADDED to base enemy values
         this._waveSpawnQueue = [];
         for (const group of wave.enemies) {
-            const type = group.type;
+            const typeId = group.type;
             const count = group.count || 1;
-            const power = group.power || 1;
-            const health = (typeof group.health === 'number') ? group.health : undefined;
-            const speed = (typeof group.speed === 'number') ? group.speed : group.speed;
+            const base = this.enemyTypes[typeId] || {};
+
+            // compute final stats by adding wave modifiers to base values
+            const finalPower = (base.basePower || 1) + (group.power || 0);
+            const finalHealth = (typeof base.baseHealth === 'number' ? base.baseHealth : 1) + (group.health || 0);
+            const finalSpeed = (typeof base.baseSpeed === 'number' ? base.baseSpeed : 0.0002) + (group.speed || 0);
             const path = (typeof group.path === 'number') ? group.path : null;
 
             for (let i = 0; i < count; i++) {
-                this._waveSpawnQueue.push({ shipId: type, pathId: path, speed: speed, power: power, health: health });
+                this._waveSpawnQueue.push({ shipId: typeId, pathId: path, speed: finalSpeed, power: finalPower, health: finalHealth });
             }
         }
 

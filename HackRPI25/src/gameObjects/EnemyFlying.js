@@ -15,23 +15,43 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
         [[1330, 360], [640, 50], [50, 360], [640, 670], [1180, 360], [640, 50], [50, 360], [640, 670], [1330, 360]],
     ]
 
-    constructor(scene, shipId, pathId, speed, power) {
-        const startingId = 0;
-        super(scene, 500, 500, ASSETS.spritesheet.pilgrims.key, startingId + shipId);
+    // constructor now accepts typeId and looks up base properties from scene.enemyTypes
+    constructor(scene, typeId, pathId, speed, power, health) {
+        const type = (scene && scene.enemyTypes && scene.enemyTypes[typeId]) ? scene.enemyTypes[typeId] : null;
+
+        // fallback sprite/key/frame
+        const spriteKey = (type && type.spriteSheet) ? type.spriteSheet : ASSETS.spritesheet.ships.key;
+        const frameIndex = (type && typeof type.frame === 'number') ? type.frame : 0;
+
+        super(scene, 500, 500, spriteKey, frameIndex + (type && type.frameOffset ? type.frameOffset : 0));
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.power = power;
+        // derive stats: prefer explicit args, otherwise use type base values
+        this.power = (typeof power === 'number') ? power : (type ? (type.basePower || 1) : 1);
+        this.health = (typeof health === 'number') ? health : (type ? (type.baseHealth || 1) : 1);
+
+        // scale enemies 2x
+        this.setScale(2);
+
         this.fireCounter = Phaser.Math.RND.between(this.fireCounterMin, this.fireCounterMax); // random firing interval
-        this.setFlipY(false); // flip image vertically
+        this.setFlipY(false);
         this.setDepth(10);
         this.scene = scene;
 
-        this.initPath(pathId, speed); // choose path to follow
+        // store type info for melee/projectile logic
+        this.typeId = typeId;
+        this.isMelee = (type && type.melee) ? true : false;
+        this.projectileKey = (type && type.projectile) ? type.projectile : ASSETS.spritesheet.FeatherProjectile.key;
+        this.projectileScale = (type && typeof type.projectileScale === 'number') ? type.projectileScale : 1.0;
+        this.walkAnimKey = (type && type.walkAnim) ? type.walkAnim : 'enemy_walk_0';
+
+        this.initPath(pathId, speed !== undefined ? speed : (type ? (type.baseSpeed || 0.0002) : 0.0002)); // choose path to follow
+
         // chase behavior configuration
-        this.chaseRadius = 150; // only blend toward player when within this many pixels of the path point
-        this.chaseFactor = 0.18; // blend factor when chasing (0..1) -- lower means weaker follow
+        this.chaseRadius = (type && type.chaseRadius) ? type.chaseRadius : 150; // only blend toward player when within this many pixels of the path point
+        this.chaseFactor = (type && type.chaseFactor) ? type.chaseFactor : 0.18; // blend factor when chasing (0..1)
     }
 
     preUpdate(time, delta) {
@@ -62,6 +82,11 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
 
         if (this.pathIndex > 1) this.die();
 
+        // play walk animation
+        if (!this.anims.isPlaying || this.anims.currentAnim.key !== this.walkAnimKey) {
+            this.play(this.walkAnimKey);
+        }
+
         // update firing interval
         if (this.fireCounter > 0) this.fireCounter--;
         else {
@@ -81,12 +106,15 @@ export default class EnemyFlying extends Phaser.Physics.Arcade.Sprite {
     }
 
     fire() {
+        // melee enemies do not fire projectiles
+        if (this.isMelee) return;
+
         this.fireCounter = Phaser.Math.RND.between(this.fireCounterMin, this.fireCounterMax);
         // aim at player if available, otherwise fire downward
         if (this.scene.player) {
-            this.scene.fireEnemyBullet(this.x, this.y, this.power, this.scene.player.x, this.scene.player.y);
+            this.scene.fireEnemyBullet(this.x, this.y, this.power, this.scene.player.x, this.scene.player.y, this.projectileKey, this.projectileScale);
         } else {
-            this.scene.fireEnemyBullet(this.x, this.y, this.power);
+            this.scene.fireEnemyBullet(this.x, this.y, this.power, undefined, undefined, this.projectileKey, this.projectileScale);
         }
     }
 

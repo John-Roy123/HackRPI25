@@ -66,7 +66,8 @@ export class Shop extends Phaser.Scene {
         const items = [
             { id: 'health', label: 'Health +1', cost: 75 },
             { id: 'speed', label: 'Max Speed +100', cost: 50 },
-            { id: 'knives', label: 'Knives (weapon)', cost: 200 }
+            { id: 'knives', label: 'Knives (weapon)', cost: 400 },
+            { id: 'musket', label: 'Musket (weapon)', cost: 800 }
         ];
 
         this.shopItems = {}; // store UI refs by item id
@@ -109,6 +110,26 @@ export class Shop extends Phaser.Scene {
 
                             // after purchase, remove/replace this shop item with a placeholder
                             const ui = this.shopItems['knives'];
+                            if (ui) {
+                                ui.label.setText('New Weapon (coming soon)');
+                                ui.cost.setText('--');
+                                ui.buy.setText('Sold').setStyle({ color: '#888888' });
+                                ui.buy.disableInteractive();
+                            }
+                        }
+                    } else if (item.id === 'musket') {
+                        if (gameScene.player) {
+                            // equip musket: change player texture, change projectile, and increase power
+                            gameScene.player.equipWeapon({
+                                name: 'musket',
+                                bulletKey: ASSETS.spritesheet.Cannonball.key,
+                                power: 5,
+                                playerTextureKey: ASSETS.spritesheet.TerryMusket.key,
+                                walkAnimKey: 'walk_musket'
+                            });
+
+                            // after purchase, remove/replace this shop item with a placeholder
+                            const ui = this.shopItems['musket'];
                             if (ui) {
                                 ui.label.setText('New Weapon (coming soon)');
                                 ui.cost.setText('--');
